@@ -1,9 +1,12 @@
+import io
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
 import argparse
 import chess
+import chess.pgn
+import requests
 
 
 USERNAME = "WojoMc"
@@ -17,6 +20,11 @@ parser.add_argument(
     type=int,
     default=6,
     help="Search only the most recent N cached months (default: 6)",
+)
+parser.add_argument(
+    "--refresh",
+    action="store_true",
+    help="Refresh the cached month JSON and FEN data before searching",
 )
 
 
@@ -90,6 +98,91 @@ def format_game_result(game):
     return str(result)
 
 
+def download_month_games(archive_url):
+    response = requests.get(archive_url, headers={"User-Agent": "ChessGameDownloader/1.0"})
+    response.raise_for_status()
+    return response.json()
+
+
+def save_month_games(archive_url, force_refresh=False):
+    cache_dir = CACHE_DIR
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    month_key = archive_url.rstrip("/").split("/games/")[-1]
+    cache_name = month_key.replace("/", "_") + ".json"
+    cache_path = cache_dir / cache_name
+
+    if cache_path.exists() and not force_refresh:
+        return cache_path
+
+    month_data = download_month_games(archive_url)
+    with cache_path.open("w", encoding="utf-8") as handle:
+        json.dump(month_data, handle, indent=2)
+
+    return cache_path
+
+
+def game_to_fen_list(game_data):
+    pgn = game_data.get("pgn")
+    if not pgn:
+        return []
+
+    board = chess.Board()
+    fen_history = [board.fen()]
+
+    try:
+        game = chess.pgn.read_game(io.StringIO(pgn))
+    except Exception:
+        return []
+
+    if game is None:
+        return []
+
+    for move in game.mainline_moves():
+        board.push(move)
+        fen_history.append(board.fen())
+
+    return fen_history
+
+
+def enrich_month_file(month_file: Path):
+    with month_file.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+
+    if not isinstance(data, dict):
+        return None
+
+    games = data.get("games")
+    if not isinstance(games, list):
+        return None
+
+    enriched_games = []
+    for game in games:
+        enriched_game = dict(game)
+        enriched_game["full_fen"] = game_to_fen_list(game)
+        enriched_games.append(enriched_game)
+
+    output_data = dict(data)
+    output_data["games"] = enriched_games
+
+    output_path = month_file.with_name(f"{month_file.stem}_FULL_FEN.json")
+    with output_path.open("w", encoding="utf-8") as handle:
+        json.dump(output_data, handle, indent=2)
+
+    return output_path
+
+
+def refresh_cached_games(username, months=6):
+    archive_url = f"https://api.chess.com/pub/player/{username}/games/archives"
+    response = requests.get(archive_url, headers={"User-Agent": "ChessGameDownloader/1.0"})
+    response.raise_for_status()
+    archives = response.json().get("archives", [])
+    recent_archives = archives[-months:] if months and months > 0 else archives
+
+    for archive in recent_archives:
+        raw_file = save_month_games(archive, force_refresh=True)
+        enrich_month_file(raw_file)
+
+
 def search_cached_games(target_fen, months=6):
     target = normalize_fen(target_fen)
     matches = []
@@ -113,6 +206,10 @@ def main():
 
     username = args.username
     print(f"Searching cached games of {username}...")
+
+    if args.refresh or not list_cached_month_files(args.months):
+        print("Refreshing cached games...")
+        refresh_cached_games(username, args.months)
 
     cached_files = list_cached_month_files(args.months)
     print(f"Found {len(cached_files)} cached month files.")
