@@ -126,9 +126,6 @@ def game_to_fen_list(game_data):
     if not pgn:
         return []
 
-    board = chess.Board()
-    fen_history = [board.fen()]
-
     try:
         game = chess.pgn.read_game(io.StringIO(pgn))
     except Exception:
@@ -137,8 +134,14 @@ def game_to_fen_list(game_data):
     if game is None:
         return []
 
+    board = game.board()
+    fen_history = [board.fen()]
+
     for move in game.mainline_moves():
-        board.push(move)
+        try:
+            board.push(move)
+        except AssertionError:
+            break
         fen_history.append(board.fen())
 
     return fen_history
@@ -156,10 +159,24 @@ def enrich_month_file(month_file: Path):
         return None
 
     enriched_games = []
+    skipped_games = 0
+
     for game in games:
+        pgn_text = game.get("pgn")
+        fen_list = game_to_fen_list(game)
+
+        if pgn_text and not fen_list:
+            skipped_games += 1
+            game_url = game.get("url") or game.get("uuid") or "unknown game"
+            print(f"Warning: skipping malformed PGN for {game_url} in {month_file.name}")
+            continue
+
         enriched_game = dict(game)
-        enriched_game["full_fen"] = game_to_fen_list(game)
+        enriched_game["full_fen"] = fen_list
         enriched_games.append(enriched_game)
+
+    if skipped_games:
+        print(f"Warning: {skipped_games} malformed game(s) skipped in {month_file.name}")
 
     output_data = dict(data)
     output_data["games"] = enriched_games
@@ -207,7 +224,10 @@ def main():
     username = args.username
     print(f"Searching cached games of {username}...")
 
-    if args.refresh or not list_cached_month_files(args.months):
+    cached_files = list_cached_month_files(args.months)
+    needs_refresh = args.refresh or not cached_files or len(cached_files) < max(1, args.months or 0)
+
+    if needs_refresh:
         print("Refreshing cached games...")
         refresh_cached_games(username, args.months)
 
