@@ -252,6 +252,11 @@ def main():
         print(f"Result: {format_game_result(game)}")
         print(f"Move:   {move_number}")
 
+        game_url = game.get("url", "N/A")
+        if game_url != "N/A":
+            game_url = f"{game_url}?move={move_number}"
+        print(f"Link:   {game_url}")
+
         print()
         print(board)
 
