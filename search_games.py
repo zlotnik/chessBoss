@@ -18,8 +18,8 @@ parser.add_argument("--fen", required=True)
 parser.add_argument(
     "--months",
     type=int,
-    default=6,
-    help="Search only the most recent N cached months (default: 6)",
+    default=None,
+    help="Search only the most recent N cached months; default: all cached months",
 )
 parser.add_argument(
     "--refresh",
@@ -28,7 +28,7 @@ parser.add_argument(
 )
 
 
-def list_cached_month_files(months=6):
+def list_cached_month_files(months=None):
     if not CACHE_DIR.exists():
         return []
 
