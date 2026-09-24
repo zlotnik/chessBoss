@@ -14,6 +14,18 @@ Create only the virtual environment:
 make venv
 ```
 
+Download games:
+
+```bash
+./download_games --username WojoMc --months 6
+```
+
+Search games for a position:
+
+```bash
+./search_games --username WojoMc --fen "YOUR_FEN_HERE" --months 6
+```
+
 Activate it on Linux or WSL:
 
 ```bash

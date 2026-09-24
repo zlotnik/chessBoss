@@ -12,7 +12,11 @@ import requests
 USERNAME = "WojoMc"
 CACHE_DIR = Path(__file__).resolve().parent / "cached_games"
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    epilog="""Example:
+  ./search_games --username WojoMc --fen "rnbqkbnr/pp1ppp1p/6p1/2p5/4P3/2P2N2/PP1P1PPP/RNBQKB1R b KQkq - 0 1" --months 6""",
+)
 parser.add_argument("--username", default=USERNAME)
 parser.add_argument("--fen", required=True)
 parser.add_argument(
