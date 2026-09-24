@@ -1,2 +1,3 @@
 cached_games/
 .venv/
+__pycache__/
