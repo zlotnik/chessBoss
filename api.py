@@ -3,6 +3,7 @@ from typing import Any, Dict
 import chess
 import requests
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from search_games import (
     format_game_date,
@@ -17,6 +18,14 @@ app = FastAPI(
     title="ChessBoss API",
     description="Search Chess.com games for chess positions.",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost", "http://localhost:5500", "http://127.0.0.1", "http://127.0.0.1:5500", "null"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
