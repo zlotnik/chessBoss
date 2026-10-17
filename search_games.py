@@ -7,10 +7,20 @@ import argparse
 import chess
 import chess.pgn
 import requests
+import time
+from typing import Callable, List, NamedTuple, Optional
 
 
 USERNAME = "WojoMc"
 CACHE_DIR = Path(__file__).resolve().parent / "cached_games"
+CACHE_MAX_AGE_SECONDS = 24 * 60 * 60
+
+
+class CachePreparation(NamedTuple):
+    cached_files: List[Path]
+    refreshed: bool
+    reason: str
+    cache_age_seconds: Optional[float]
 
 parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -44,16 +54,15 @@ def list_cached_month_files(months=None):
 
 def normalize_fen(fen):
     """
-    For position searching we can optionally ignore:
-      - halfmove clock
-      - fullmove number
-
-    The first 4 FEN fields describe the actual position:
-      board, side to move, castling rights, en passant
+    Position lookup compares the visible board and side to move, ignoring:
+    - castling rights
+    - en passant target
+    - halfmove clock
+    - fullmove number
     """
     if not fen:
         return ""
-    return " ".join(fen.split()[:4])
+    return " ".join(fen.split()[:2])
 
 
 def format_game_date(game):
@@ -204,6 +213,40 @@ def refresh_cached_games(username, months=6):
         enrich_month_file(raw_file)
 
 
+def prepare_cached_games(
+    username,
+    months=6,
+    force_refresh=False,
+    on_refresh: Optional[Callable[[str], None]] = None,
+):
+    cached_files = list_cached_month_files(months)
+    newest_cache_mtime = max((path.stat().st_mtime for path in cached_files), default=None)
+    cache_age_seconds = time.time() - newest_cache_mtime if newest_cache_mtime is not None else None
+    cache_is_stale = cache_age_seconds is None or cache_age_seconds >= CACHE_MAX_AGE_SECONDS
+    cache_is_incomplete = (
+        not cached_files
+        or (months is not None and months > 0 and len(cached_files) < months)
+    )
+    needs_refresh = force_refresh or cache_is_stale or cache_is_incomplete
+
+    if force_refresh:
+        reason = "explicitly requested"
+    elif cache_is_stale:
+        reason = "cache is missing or older than 24 hours"
+    elif cache_is_incomplete:
+        reason = "fewer cached months than requested"
+    else:
+        reason = "cache is recent and complete"
+
+    if needs_refresh:
+        if on_refresh is not None:
+            on_refresh(reason)
+        refresh_cached_games(username, months)
+        cached_files = list_cached_month_files(months)
+
+    return CachePreparation(cached_files, needs_refresh, reason, cache_age_seconds)
+
+
 def search_cached_games(target_fen, months=6):
     target = normalize_fen(target_fen)
     matches = []
@@ -228,15 +271,16 @@ def main():
     username = args.username
     print(f"Searching cached games of {username}...")
 
-    cached_files = list_cached_month_files(args.months)
-    needs_refresh = args.refresh or not cached_files or len(cached_files) < max(1, args.months or 0)
+    cache_status = prepare_cached_games(
+        username,
+        args.months,
+        force_refresh=args.refresh,
+        on_refresh=lambda reason: print(f"Refreshing cached games: {reason}..."),
+    )
 
-    if needs_refresh:
-        print("Refreshing cached games...")
-        refresh_cached_games(username, args.months)
-
-    cached_files = list_cached_month_files(args.months)
-    print(f"Found {len(cached_files)} cached month files.")
+    if not cache_status.refreshed:
+        print(f"Using cached games: {cache_status.reason}.")
+    print(f"Found {len(cache_status.cached_files)} cached month files.")
 
     matches = search_cached_games(args.fen, args.months)
 

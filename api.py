@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict
 
 import chess
@@ -8,10 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from search_games import (
     format_game_date,
     format_game_result,
-    list_cached_month_files,
-    refresh_cached_games,
+    prepare_cached_games,
     search_cached_games,
 )
+
+logger = logging.getLogger("uvicorn.error")
 
 
 app = FastAPI(
@@ -60,14 +62,42 @@ def games(
         raise HTTPException(status_code=422, detail=f"Invalid FEN: {error}") from error
 
     try:
-        cached_files = list_cached_month_files(months)
-        needs_refresh = refresh or not cached_files or len(cached_files) < months
-        if needs_refresh:
-            refresh_cached_games(username, months)
+        cache_status = prepare_cached_games(
+            username,
+            months,
+            force_refresh=refresh,
+            on_refresh=lambda reason: logger.info(
+                "Refreshing cached games: username=%s months=%d reason=%s",
+                username,
+                months,
+                reason,
+            ),
+        )
+        cache_age_hours = cache_status.cache_age_seconds / 3600 if cache_status.cache_age_seconds is not None else None
+        logger.info(
+            "Cache ready: username=%s months=%d cached_months=%d newest_cache_age_hours=%s refreshed=%s reason=%s files=%s",
+            username,
+            months,
+            len(cache_status.cached_files),
+            f"{cache_age_hours:.1f}" if cache_age_hours is not None else "unknown",
+            cache_status.refreshed,
+            cache_status.reason,
+            [path.name for path in cache_status.cached_files],
+        )
+
         matches = search_cached_games(fen, months)
+        logger.info(
+            "Game search complete: username=%s months=%d searched_months=%d matches=%d",
+            username,
+            months,
+            len(cache_status.cached_files),
+            len(matches),
+        )
     except requests.RequestException as error:
+        logger.exception("Game search failed while refreshing cache: username=%s", username)
         raise HTTPException(status_code=502, detail=f"Unable to refresh games: {error}") from error
     except (OSError, ValueError) as error:
+        logger.exception("Game search failed while reading or processing cache: username=%s", username)
         raise HTTPException(status_code=500, detail=str(error)) from error
 
     return {
