@@ -1,5 +1,20 @@
 # ChessBoss
 
+## How to run backend + front end
+
+1. run chess api in chess boss
+```bash
+cd ~/chessBoss
+make install
+./api
+```
+
+2. run front end server
+```bash
+cd ~/devJourney
+python3 -m http.server 5500
+```
+
 ## Setup
 
 Create the virtual environment and install dependencies:
