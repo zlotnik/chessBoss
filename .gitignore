@@ -1,3 +1,5 @@
 cached_games/
 .venv/
 __pycache__/
+lambda-package/
+chessboss-lambda.zip

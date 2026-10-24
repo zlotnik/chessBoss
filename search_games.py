@@ -1,5 +1,6 @@
 import io
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,7 +13,12 @@ from typing import Callable, List, NamedTuple, Optional
 
 
 USERNAME = "WojoMc"
-CACHE_DIR = Path(__file__).resolve().parent / "cached_games"
+DEFAULT_CACHE_DIR = (
+    Path("/tmp/chessboss-cache")
+    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+    else Path(__file__).resolve().parent / "cached_games"
+)
+CACHE_DIR = Path(os.environ.get("CHESSBOSS_CACHE_DIR", DEFAULT_CACHE_DIR))
 CACHE_MAX_AGE_SECONDS = 24 * 60 * 60
 
 
