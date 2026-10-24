@@ -9,24 +9,15 @@ import chess
 import chess.pgn
 import requests
 import time
-from typing import Callable, List, NamedTuple, Optional
+from typing import Callable, Optional
+
+from data_providers.base import CACHE_MAX_AGE_SECONDS, CacheStatus
 
 
 USERNAME = "WojoMc"
-DEFAULT_CACHE_DIR = (
-    Path("/tmp/chessboss-cache")
-    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
-    else Path(__file__).resolve().parent / "cached_games"
-)
+DEFAULT_CACHE_DIR = Path(__file__).resolve().parent / "cached_games"
 CACHE_DIR = Path(os.environ.get("CHESSBOSS_CACHE_DIR", DEFAULT_CACHE_DIR))
-CACHE_MAX_AGE_SECONDS = 24 * 60 * 60
 
-
-class CachePreparation(NamedTuple):
-    cached_files: List[Path]
-    refreshed: bool
-    reason: str
-    cache_age_seconds: Optional[float]
 
 parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -212,7 +203,9 @@ def refresh_cached_games(username, months=6):
     response = requests.get(archive_url, headers={"User-Agent": "ChessGameDownloader/1.0"})
     response.raise_for_status()
     archives = response.json().get("archives", [])
-    recent_archives = archives[-months:] if months and months > 0 else archives
+    recent_archives = archives
+    if months and months > 0:
+        recent_archives = archives[-months:]
 
     for archive in recent_archives:
         raw_file = save_month_games(archive, force_refresh=True)
@@ -227,8 +220,10 @@ def prepare_cached_games(
 ):
     cached_files = list_cached_month_files(months)
     newest_cache_mtime = max((path.stat().st_mtime for path in cached_files), default=None)
-    cache_age_seconds = time.time() - newest_cache_mtime if newest_cache_mtime is not None else None
-    cache_is_stale = cache_age_seconds is None or cache_age_seconds >= CACHE_MAX_AGE_SECONDS
+    cache_age_seconds = None
+    if newest_cache_mtime is not None:
+        cache_age_seconds = time.time() - newest_cache_mtime
+    cache_is_stale = cache_age_seconds is None or cache_age_seconds > CACHE_MAX_AGE_SECONDS
     cache_is_incomplete = (
         not cached_files
         or (months is not None and months > 0 and len(cached_files) < months)
@@ -238,7 +233,7 @@ def prepare_cached_games(
     if force_refresh:
         reason = "explicitly requested"
     elif cache_is_stale:
-        reason = "cache is missing or older than 24 hours"
+        reason = "cache is missing or older than 1 hour"
     elif cache_is_incomplete:
         reason = "fewer cached months than requested"
     else:
@@ -250,7 +245,7 @@ def prepare_cached_games(
         refresh_cached_games(username, months)
         cached_files = list_cached_month_files(months)
 
-    return CachePreparation(cached_files, needs_refresh, reason, cache_age_seconds)
+    return CacheStatus(cached_files, needs_refresh, cache_age_seconds)
 
 
 def search_cached_games(target_fen, months=6):
@@ -298,8 +293,15 @@ def main():
 
         white = game.get("white")
         black = game.get("black")
-        white_name = white.get("username") if isinstance(white, dict) else white
-        black_name = black.get("username") if isinstance(black, dict) else black
+        if isinstance(white, dict):
+            white_name = white.get("username")
+        else:
+            white_name = white
+
+        if isinstance(black, dict):
+            black_name = black.get("username")
+        else:
+            black_name = black
 
         print(f"{white_name} vs {black_name}")
         print(f"Date:   {format_game_date(game)}")

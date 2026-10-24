@@ -1,0 +1,5 @@
+python-chess
+requests
+fastapi
+mangum
+boto3

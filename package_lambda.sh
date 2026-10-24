@@ -18,8 +18,10 @@ cd "$SCRIPT_DIR"
 rm -rf lambda-package chessboss-lambda.zip
 mkdir -p lambda-package
 
-"$PYTHON_BIN" -m pip install --no-cache-dir -r requirements.txt -t lambda-package/
-cp api.py search_games.py lambda-package/
+"$PYTHON_BIN" -m pip install --no-cache-dir -r requirements-lambda.txt -t lambda-package/
+cp api.py api_app.py cache.py lambda_api.py search_games.py lambda-package/
+mkdir -p lambda-package/data_providers
+cp data_providers/__init__.py data_providers/base.py data_providers/s3.py lambda-package/data_providers/
 
 (
     cd lambda-package
