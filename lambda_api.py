@@ -1,5 +1,9 @@
 import os
 
-os.environ.setdefault("CHESSBOSS_CACHE_DIR", "/tmp/chessboss-cache")
+os.environ["CHESSBOSS_CACHE_DIR"] = "/tmp/chessboss-cache"
 
-from api import app, handler
+from api import app
+from mangum import Mangum
+
+
+handler = Mangum(app)

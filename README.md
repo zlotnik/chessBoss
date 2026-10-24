@@ -56,7 +56,7 @@ GET /games?username=WojoMc&months=6&fen=rnbqkbnr%2Fpp1ppp1p%2F6p1%2F2p5%2F4P3%2F
 
 ## AWS Lambda deployment
 
-The API uses the same routes and search logic in both environments. `api.py` selects the S3 provider when Lambda sets `AWS_LAMBDA_FUNCTION_NAME`, and otherwise selects the local provider. Local Uvicorn serves `api:app`; Lambda uses `lambda_api.handler`, which sets the writable cache directory before loading the shared app.
+The API uses the same routes and search logic in both environments. `api.py` selects the S3 provider when Lambda sets `AWS_LAMBDA_FUNCTION_NAME`; otherwise it selects the local provider. Local Uvicorn serves `api:app`; Lambda uses `lambda_api.handler`, which sets the writable `/tmp/chessboss-cache` directory and wraps the shared FastAPI app with Mangum.
 
 Set these Lambda environment variables:
 

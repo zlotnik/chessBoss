@@ -1,7 +1,5 @@
 import os
-
 from api_app import create_app
-from mangum import Mangum
 
 
 IS_LAMBDA = bool(os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
@@ -15,4 +13,3 @@ else:
 	game_data_provider = LocalGameDataProvider()
 
 app = create_app(game_data_provider)
-handler = Mangum(app)
