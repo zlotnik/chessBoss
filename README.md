@@ -64,7 +64,7 @@ Set these Lambda environment variables:
 - `CHESSBOSS_S3_PREFIX`: optional folder prefix within that bucket.
 - `CHESSBOSS_ALLOWED_ORIGINS`: comma-separated allowed website origins, including the CloudFront URL.
 
-The Lambda execution role needs `s3:ListBucket` on the data bucket and `s3:GetObject` on its game files. The API copies game files to `/tmp` and reloads the local cache when it is missing or older than one hour. Lambda refresh reloads the S3 snapshot; update the S3 files separately when new Chess.com data is needed. Local mode refreshes from Chess.com automatically when its cache is missing or older than one hour.
+The Lambda execution role needs `s3:ListBucket` on the data bucket, plus `s3:GetObject` and `s3:PutObject` on its game files. The lookup order is `/tmp`, then S3 if the local cache is missing or incomplete, then Chess.com if S3 cannot satisfy the requested months. Cached S3 object timestamps are preserved when files are restored so the one-hour freshness check remains accurate. When Lambda refreshes from Chess.com, it writes the generated `*_FULL_FEN.json` files back to S3. Lambda must have outbound internet access to Chess.com; a function attached to a VPC may need a NAT gateway. Local mode refreshes from Chess.com automatically when its cache is missing or older than one hour.
 
 Normal searches use `GET /games`. To force a cache refresh, use `POST /games/refresh?username=WojoMc&months=6`.
 
