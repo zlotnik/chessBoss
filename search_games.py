@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -39,11 +40,19 @@ parser.add_argument(
 )
 
 
-def list_cached_month_files(months=None):
-    if not CACHE_DIR.exists():
+def username_cache_dir(username):
+    username_key = username.strip().lower()
+    if not re.fullmatch(r"[a-z0-9_-]+", username_key):
+        raise ValueError("Username must contain only letters, numbers, underscores, and hyphens.")
+    return CACHE_DIR / username_key
+
+
+def list_cached_month_files(months=None, username=USERNAME):
+    cache_dir = username_cache_dir(username)
+    if not cache_dir.exists():
         return []
 
-    files = sorted(CACHE_DIR.glob("*_FULL_FEN.json"))
+    files = sorted(cache_dir.glob("*_FULL_FEN.json"))
     if months is None or months <= 0:
         return files
     return files[-months:]
@@ -114,8 +123,8 @@ def download_month_games(archive_url):
     return response.json()
 
 
-def save_month_games(archive_url, force_refresh=False):
-    cache_dir = CACHE_DIR
+def save_month_games(archive_url, force_refresh=False, username=USERNAME):
+    cache_dir = username_cache_dir(username)
     cache_dir.mkdir(parents=True, exist_ok=True)
     month_key = archive_url.rstrip("/").split("/games/")[-1]
     cache_name = month_key.replace("/", "_") + ".json"
@@ -208,7 +217,7 @@ def refresh_cached_games(username, months=6):
         recent_archives = archives[-months:]
 
     for archive in recent_archives:
-        raw_file = save_month_games(archive, force_refresh=True)
+        raw_file = save_month_games(archive, force_refresh=True, username=username)
         enrich_month_file(raw_file)
 
 
@@ -218,7 +227,7 @@ def prepare_cached_games(
     force_refresh=False,
     on_refresh: Optional[Callable[[str], None]] = None,
 ):
-    cached_files = list_cached_month_files(months)
+    cached_files = list_cached_month_files(months, username=username)
     newest_cache_mtime = max((path.stat().st_mtime for path in cached_files), default=None)
     cache_age_seconds = None
     if newest_cache_mtime is not None:
@@ -243,16 +252,16 @@ def prepare_cached_games(
         if on_refresh is not None:
             on_refresh(reason)
         refresh_cached_games(username, months)
-        cached_files = list_cached_month_files(months)
+        cached_files = list_cached_month_files(months, username=username)
 
     return CacheStatus(cached_files, needs_refresh, cache_age_seconds)
 
 
-def search_cached_games(target_fen, months=6):
+def search_cached_games(target_fen, months=6, username=USERNAME):
     target = normalize_fen(target_fen)
     matches = []
 
-    for month_file in list_cached_month_files(months):
+    for month_file in list_cached_month_files(months, username=username):
         with open(month_file, "r", encoding="utf-8") as handle:
             data = json.load(handle)
 
@@ -283,7 +292,7 @@ def main():
         print(f"Using cached games: {cache_status.reason}.")
     print(f"Found {len(cache_status.cached_files)} cached month files.")
 
-    matches = search_cached_games(args.fen, args.months)
+    matches = search_cached_games(args.fen, args.months, username=username)
 
     print()
     print(f"Found {len(matches)} matching positions.")

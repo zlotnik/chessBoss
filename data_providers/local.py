@@ -10,8 +10,8 @@ logger = logging.getLogger("uvicorn.error")
 
 
 class LocalGameDataProvider(GameDataProvider):
-    def cached_files(self, months: int) -> List[Path]:
-        return list_cached_month_files(months)
+    def cached_files(self, username: str, months: int) -> List[Path]:
+        return list_cached_month_files(months, username=username)
 
     def refresh(self, username: str, months: int) -> List[Path]:
         logger.info(
@@ -20,4 +20,4 @@ class LocalGameDataProvider(GameDataProvider):
             months,
         )
         refresh_cached_games(username, months)
-        return list_cached_month_files(months)
+        return list_cached_month_files(months, username=username)

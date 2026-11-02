@@ -62,7 +62,7 @@ class GameDataFilesNotFound(GameDataError):
 
 class GameDataProvider(ABC):
     @abstractmethod
-    def cached_files(self, months: int) -> List[Path]:
+    def cached_files(self, username: str, months: int) -> List[Path]:
         raise NotImplementedError
 
     @abstractmethod

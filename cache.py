@@ -12,8 +12,8 @@ class GameCache:
         self.provider = provider
         self._status = CacheStatus([], False, None)
 
-    def get_status(self, months: int) -> CacheState:
-        cached_files = self.provider.cached_files(months)
+    def get_status(self, username: str, months: int) -> CacheState:
+        cached_files = self.provider.cached_files(username, months)
         return self._update_status(cached_files, False)
 
     def get_age_minutes(self) -> int:
@@ -41,8 +41,8 @@ class GameCache:
     def reason(self) -> str:
         return self._status.reason
 
-    def search(self, fen: str, months: int):
-        return search_cached_games(fen, months)
+    def search(self, username: str, fen: str, months: int):
+        return search_cached_games(fen, months, username=username)
 
     def _age_seconds(self, cached_files: List[Path]) -> Optional[float]:
         newest_cache_mtime = None

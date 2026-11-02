@@ -9,7 +9,7 @@ from data_providers.base import (
     GameDataNotConfigured,
     GameDataProvider,
 )
-from search_games import CACHE_DIR, list_cached_month_files, refresh_cached_games
+from search_games import list_cached_month_files, refresh_cached_games, username_cache_dir
 
 
 class S3GameDataProvider(GameDataProvider):
@@ -22,28 +22,29 @@ class S3GameDataProvider(GameDataProvider):
             self.client = boto3.client("s3")
         else:
             self.client = None
-    def cached_files(self, months: int) -> List[Path]:
+    def cached_files(self, username: str, months: int) -> List[Path]:
         self._ensure_configured()
-        cached_files = list_cached_month_files(months)
+        cached_files = list_cached_month_files(months, username=username)
         if self._has_enough_files(cached_files, months):
             return cached_files
 
-        cached_files = self._restore_cache_from_s3(months)
+        cached_files = self._restore_cache_from_s3(username, months)
         if self._has_enough_files(cached_files, months):
             return cached_files
         return []
 
     def refresh(self, username: str, months: int) -> List[Path]:
         self._ensure_configured()
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_dir = username_cache_dir(username)
+        cache_dir.mkdir(parents=True, exist_ok=True)
         refresh_cached_games(username, months)
-        cached_files = list_cached_month_files(months)
+        cached_files = list_cached_month_files(months, username=username)
         if not cached_files:
             raise GameDataFilesNotFound("No *_FULL_FEN.json game files were downloaded from Chess.com.")
 
         client = self.client
         for cache_path in cached_files:
-            key = cache_path.name
+            key = f"{cache_dir.name}/{cache_path.name}"
             if self.prefix:
                 key = f"{self.prefix}/{key}"
             with cache_path.open("rb") as cache_file:
@@ -56,13 +57,14 @@ class S3GameDataProvider(GameDataProvider):
             return bool(cached_files)
         return len(cached_files) >= months
 
-    def _restore_cache_from_s3(self, months: int) -> List[Path]:
+    def _restore_cache_from_s3(self, username: str, months: int) -> List[Path]:
         self._ensure_configured()
         client = self.client
         paginator = client.get_paginator("list_objects_v2")
-        prefix = ""
+        user_prefix = username_cache_dir(username).name
         if self.prefix:
-            prefix = f"{self.prefix}/"
+            user_prefix = f"{self.prefix}/{user_prefix}"
+        prefix = f"{user_prefix}/"
 
         s3_files = []
         for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
@@ -74,19 +76,20 @@ class S3GameDataProvider(GameDataProvider):
         if months > 0:
             s3_files = s3_files[-months:]
         if not s3_files:
-            return list_cached_month_files(months)
+            return list_cached_month_files(months, username=username)
 
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_dir = username_cache_dir(username)
+        cache_dir.mkdir(parents=True, exist_ok=True)
         for item in s3_files:
             key = item["Key"]
-            cache_path = CACHE_DIR / Path(key).name
+            cache_path = cache_dir / Path(key).name
             client.download_file(self.bucket, key, str(cache_path))
             last_modified = item.get("LastModified")
             if last_modified is not None:
                 modified_time = last_modified.timestamp()
                 os.utime(cache_path, (modified_time, modified_time))
 
-        return list_cached_month_files(months)
+        return list_cached_month_files(months, username=username)
 
     def _ensure_configured(self) -> None:
         if not self.bucket or self.client is None:

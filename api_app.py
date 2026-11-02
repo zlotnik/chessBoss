@@ -94,7 +94,7 @@ def create_app(game_data_provider: GameDataProvider) -> FastAPI:
         try:
 
             
-            cache_status = cache.get_status(months)
+            cache_status = cache.get_status(username, months)
             cache_age_minutes = cache.get_age_minutes()
             if cache_status == CacheState.EXISTING and cache_age_minutes > 60:
                 cache_status = cache.refresh(username, months)
@@ -115,7 +115,7 @@ def create_app(game_data_provider: GameDataProvider) -> FastAPI:
                 [path.name for path in cache.cached_files],
             )
 
-            matches = cache.search(fen, months)
+            matches = cache.search(username, fen, months)
             logger.info(
                 "Game search complete: username=%s months=%d searched_months=%d matches=%d",
                 username,
