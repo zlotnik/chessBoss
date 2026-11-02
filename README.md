@@ -75,10 +75,10 @@ After creating a Lambda Function URL, set `window.CHESSBOSS_API_URL` in `../devJ
 From WSL, create a deployment package with:
 
 ```bash
-bash package_lambda.sh
+bash create_lambda_package_incremently.sh
 ```
 
-To use a specific Python interpreter, set `PYTHON`, for example `PYTHON=.venv/bin/python bash package_lambda.sh`. Choose an AWS-supported Lambda Python runtime matching that interpreter. Upload `chessboss-lambda.zip` to the function and set its handler to `lambda_api.handler`. Configure the same environment variables and S3 permissions listed above. The script replaces the generated `lambda-package/` directory and ZIP each time it runs.
+The script reuses `.lambda-package-cache/` when the requirements, Python version, and platform are unchanged. To force a dependency reinstall, run `FORCE_DEPENDENCY_REBUILD=1 bash create_lambda_package_incremently.sh`. To use a specific interpreter, set `PYTHON`, for example `PYTHON=.venv/bin/python bash create_lambda_package_incremently.sh`. Choose an AWS-supported Lambda Python runtime matching that interpreter. Upload `chessboss-lambda.zip` to the function and set its handler to `lambda_api.handler`. Configure the same environment variables and S3 permissions listed above. The script rebuilds the app ZIP each run but only reinstalls dependencies when its cache key changes.
 
 The Lambda ZIP uses `requirements-lambda.txt` and omits Uvicorn plus the local-only provider module. Local development continues to use the full `requirements.txt`.
 

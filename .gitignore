@@ -3,3 +3,4 @@ cached_games/
 __pycache__/
 lambda-package/
 chessboss-lambda.zip
+.lambda-package-cache/
