@@ -15,25 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Show workflow identity
-        run: |
-          echo "Repository: $GITHUB_REPOSITORY"
-          echo "Ref: $GITHUB_REF"
-          echo "Event: $GITHUB_EVENT_NAME"
-
-      - name: Debug OIDC claims
-        env:
-          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
-          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
-        run: |
-          RESPONSE=$(curl -sS \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
-
-          TOKEN=$(echo "$RESPONSE" | jq -r '.value')
-
-          echo "$TOKEN" | cut -d '.' -f 2 | base64 -d 2>/dev/null | jq '{iss, aud, sub}'
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
