@@ -1,0 +1,42 @@
+Cold cache:
+  Chess.com archive-list API: 0.392s
+  Monthly game downloads:    1.566s
+  FEN enrichment:            11.225s
+  File search:               0.111s
+  Response serialization:    0.002s
+  Total: 13.477s; archives=6; matches=7; response=1767 bytes
+Hot cache:
+  Chess.com archive-list API: 0.000s
+  Monthly game downloads:    0.000s
+  FEN enrichment:            0.000s
+  File search:               0.094s
+  Response serialization:    0.002s
+  Total: 0.097s; archives=6; matches=7; response=1767 bytes
+Cold cache:
+  Chess.com archive-list API: 0.356s
+  Monthly game downloads:    1.767s
+  FEN enrichment:            8.900s
+  File search:               0.109s
+  Response serialization:    0.003s
+  Total: 11.282s; archives=6; matches=7; response=1767 bytes
+Hot cache:
+  Chess.com archive-list API: 0.000s
+  Monthly game downloads:    0.000s
+  FEN enrichment:            0.000s
+  File search:               0.094s
+  Response serialization:    0.002s
+  Total: 0.097s; archives=6; matches=7; response=1767 bytes
+Cold cache:
+  Chess.com archive-list API: 0.404s
+  Monthly game downloads:    2.122s
+  FEN enrichment:            11.404s
+  File search:               0.105s
+  Response serialization:    0.002s
+  Total: 14.211s; archives=6; matches=7; response=1767 bytes
+Hot cache:
+  Chess.com archive-list API: 0.000s
+  Monthly game downloads:    0.000s
+  FEN enrichment:            0.000s
+  File search:               0.090s
+  Response serialization:    0.002s
+  Total: 0.093s; archives=6; matches=7; response=1767 bytes
